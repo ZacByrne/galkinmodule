@@ -53,16 +53,67 @@ plt.rcParams['font.family'] = 'serif'
 ##########################################################################################
 # functions
 ##########################################################################################
-def sn_plot(filename, 
+# Make SN array
+def sn_array(cube, xs,ys):
+	snCube=np.zeros((xs,ys))
+	lightCube=np.zeros((xs,ys))
+	snList=np.zeros((3,xs*ys))
+	c=0
+	for i in range(xs):
+		for j in range(ys):
+			gal=cube[i,j,:]
+			snCube[i,j]=DER_SNR(gal)
+			snList[:,c]=[i,j,DER_SNR(gal)]
+			filteredData = sigma_clip(gal, sigma=3, iters=1)
+			spax_mean = np.mean(filteredData.data[~filteredData.mask])
+			lightCube[i,j]= spax_mean
+			c+=1
+			
+
+
+'''
+##########################################################################################
+NAME: NIFS_sn.sn_plot
+Plots sn graph from 3d cude. input: galname: galaxy name (i.e. VCC1619), sbdata: x,y,sn matrix
+##########################################################################################
+'''
+def sn_plot(galname, sndata):
 	fig = plt.figure(figsize=(7, 5))
 	fig.add_subplot(1, 1, 1)
-	ax1 = display_pixels(snList[0, :], snList[1, :], snList[2, :], colorbar=1, label='S/N')
+	ax1 = display_pixels(sndata[0, :], sndata[1, :], sndata[2, :], colorbar=1, label='S/N')
 	ax1.axes.set_xlabel(r'SPAXEL')
 	ax1.axes.set_ylabel(r'SPAXEL')
-	fig.savefig(name + '_sn.pdf', facecolor='None')
+	fig.savefig(galname + '_sn.pdf', facecolor='None')
+	
+	
+# saves sky, sn and spec fits files, input combined spectrum fits file, galaxy name
+def sn_save(comspecfits, galname):
+	hdu=fits.ImageHDU(comspecfits)
+	hdr=hdu.header
+	hdr["CTYPE1"] = "ANGSTROM"
+	hdr["CRVAL1"] = hdr_cube["CRVAL3"]
+	hdr["CRPIX1"] = 1.
+	hdr["CDELT1"] = hdr_cube["Cd3_3"]
 
+	fits.writeto(galname+'_spec.fits',gal, header=hdr, clobber=True)
+	fits.writeto(galname+'_sn.fits', snCube.T, clobber=True)
+	fits.writeto(galname+'_sky.fits',lightCube.T, clobber=True)
 
-
+# Make combined spectrum
+def sn_combinespectrum(cube):
+	find=snCube > 5
+	spec_temp = cube[find,:]
+	count=len(snCube[find])
+ 
+	if count<=2:
+		gal = np.average(spec_temp,axis=0) 
+	else:
+		#Sigma clipping without producing a masked array
+		gal, median, std = sigma_clipped_stats(spec_temp, sigma=3.0, axis=0)
+		gal_notmasked = np.average(spec_temp,axis=0)
+		gal[gal.mask] = gal_notmasked[gal.mask]
+		gal = gal.data 	
+	    
 
 ##########################################################################################
 # Main
@@ -125,22 +176,22 @@ else:
 
 
 # Save
-hdu=fits.ImageHDU(gal)
-hdr=hdu.header
-hdr["CTYPE1"] = "ANGSTROM"
-hdr["CRVAL1"] = hdr_cube["CRVAL3"]
-hdr["CRPIX1"] = 1.
-hdr["CDELT1"] = hdr_cube["Cd3_3"]
+#hdu=fits.ImageHDU(gal)
+#hdr=hdu.header
+#hdr["CTYPE1"] = "ANGSTROM"
+#hdr["CRVAL1"] = hdr_cube["CRVAL3"]
+#hdr["CRPIX1"] = 1.
+#hdr["CDELT1"] = hdr_cube["Cd3_3"]
 
-fits.writeto(name+'_spec.fits',gal, header=hdr, clobber=True)
-fits.writeto(name+'_sn.fits', snCube.T, clobber=True)
-fits.writeto(name+'_sky.fits',lightCube.T, clobber=True)
+#fits.writeto(name+'_spec.fits',gal, header=hdr, clobber=True)
+#fits.writeto(name+'_sn.fits', snCube.T, clobber=True)
+#fits.writeto(name+'_sky.fits',lightCube.T, clobber=True)
 
 # Plot
-fig=plt.figure(figsize=(7,5))
-fig.add_subplot(1,1,1)
-ax1 = display_pixels(snList[0,:], snList[1,:], snList[2,:], colorbar=1, label='S/N')
-ax1.axes.set_xlabel(r'SPAXEL')
-ax1.axes.set_ylabel(r'SPAXEL')
-fig.savefig(name+'_sn.pdf', facecolor='None')
+#fig=plt.figure(figsize=(7,5))
+#fig.add_subplot(1,1,1)
+#ax1 = display_pixels(snList[0,:], snList[1,:], snList[2,:], colorbar=1, label='S/N')
+#ax1.axes.set_xlabel(r'SPAXEL')
+#ax1.axes.set_ylabel(r'SPAXEL')
+#fig.savefig(name+'_sn.pdf', facecolor='None')
 
