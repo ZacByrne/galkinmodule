@@ -53,7 +53,7 @@ plt.rcParams['font.family'] = 'serif'
 ##########################################################################################
 # functions
 ##########################################################################################
-def sn_plot()
+def sn_plot(filename, 
 	fig = plt.figure(figsize=(7, 5))
 	fig.add_subplot(1, 1, 1)
 	ax1 = display_pixels(snList[0, :], snList[1, :], snList[2, :], colorbar=1, label='S/N')
